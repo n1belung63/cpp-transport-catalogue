@@ -5,8 +5,22 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <variant>
+#include <optional>
 
-namespace transport_catalogue {   
+namespace transport_catalogue {
+    enum class RequestType {
+        None,
+        AddStop,
+        FindStop,
+        GetStopInfo,
+        AddBus,
+        FindBus,
+        GetBusInfo,
+        GetMap,
+        GetRoute
+    };
+
     struct Stop {
         std::string name;
         geo::Coordinates coords;
@@ -37,4 +51,15 @@ namespace transport_catalogue {
         std::string name;
         std::vector<std::tuple<std::string, geo::Coordinates>> stops_and_coordinates;
     };
+
+    struct RoutingSettings {
+        double bus_velocity;
+        int bus_wait_time;
+    };
+    
+    using RequestBodyDTO = std::variant<std::monostate,std::string_view,std::pair<std::string_view,std::string_view>>;
+
+    using BaseRequestDTO = std::optional<std::variant<std::monostate, Bus, Stop>>;
+    using StatRequestDTO = std::optional<std::tuple<int,RequestType,std::optional<RequestBodyDTO>>>;
+    using StatResponseDTO = std::optional<std::tuple<int,std::variant<std::monostate, std::string, BusInfo, StopInfo>>>;
 }

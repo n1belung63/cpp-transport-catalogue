@@ -25,6 +25,7 @@ int main()
     }
 
     map_renderer.SetUp(reader.GetRendererSettings());
+    // request_handler.SetRoutingSettings(reader.GetRoutingSettings());
 
     for (size_t i=0; i < reader.GetStatRequestCount(); i++) {
         reader.AddResponse(request_handler.StatRequest(reader.GetStatRequest(i)));

@@ -19,47 +19,64 @@ namespace transport_catalogue {
         return out;
     }
 
-    void RequestHandler::BaseRequest(std::variant<Bus, Stop> base_request) {
-        if (std::holds_alternative<Bus>(base_request)) {
-            tc_.AddBus(std::get<Bus>(base_request));
-            buses_names_.emplace_back(std::get<Bus>(base_request).num);
+    void RequestHandler::BaseRequest(BaseRequestDTO base_request) {
+        if (base_request.has_value()) {
+            if (std::holds_alternative<Bus>(base_request.value())) {
+                tc_.AddBus(std::get<Bus>(base_request.value()));
+                buses_names_.emplace_back(std::get<Bus>(base_request.value()).num);
+            }
+            else if (std::holds_alternative<Stop>(base_request.value())) {
+                tc_.AddStop(std::get<Stop>(base_request.value()));
+            }
+        } else {
+            // todo: raise error?
         }
-        else if (std::holds_alternative<Stop>(base_request)) {
-            tc_.AddStop(std::get<Stop>(base_request));
-        }
+        
     }
 
-    RequestHandler::StatResponse RequestHandler::StatRequest(std::tuple<QueryType,int,std::string_view> stat_request) {
+    StatResponseDTO RequestHandler::StatRequest(StatRequestDTO stat_request_opt) {
+        if (!stat_request_opt.has_value()) {
+            return std::nullopt;
+        }
+        const auto& stat_request = stat_request_opt.value();
         try {
-            switch (std::get<QueryType>(stat_request))
+            const auto request_body = std::get<std::optional<RequestBodyDTO>>(stat_request);
+            switch (std::get<RequestType>(stat_request))
             {
-            case QueryType::GetStopInfo:
-                return { std::get<int>(stat_request), tc_.GetStopInfo(std::get<std::string_view>(stat_request)) };
+            case RequestType::GetStopInfo:
+                return std::tuple{ std::get<int>(stat_request), 
+                    tc_.GetStopInfo(std::get<std::string_view>(request_body.value()))
+                };
                 break;
-            case QueryType::GetBusInfo:
-                return { std::get<int>(stat_request), tc_.GetBusInfo(std::get<std::string_view>(stat_request)) };
+            case RequestType::GetBusInfo:
+                return std::tuple{ std::get<int>(stat_request), 
+                    tc_.GetBusInfo(std::get<std::string_view>(request_body.value()))
+                };
                 break;
-            case QueryType::GetMap: {
-                    std::stringstream ss;
-                    SendDataToRenderer();    
-                    renderer_.Render(ss);
-                    return { std::get<int>(stat_request), ss.str() };
-                }
+            case RequestType::GetMap:
+                return std::tuple{ std::get<int>(stat_request), RenderMap() };
                 break;    
             default:
-                return { std::get<int>(stat_request), "No resp"s };
+                return std::nullopt;
                 break;
             }
         }
         catch (const std::exception& e) {
             std::string err_msg = e.what();
-            return { std::get<int>(stat_request), err_msg };
+            return std::tuple{ std::get<int>(stat_request), err_msg };
         }
     }
 
-    void RequestHandler::SendDataToRenderer() {
+    std::string RequestHandler::RenderMap() {
         for (const auto& busnum : buses_names_) {
             renderer_.SetBusExtendedInfo(tc_.GetBusExtendedInfo(busnum));
-        }        
+        }   
+        std::stringstream ss;
+        renderer_.Render(ss);
+        return ss.str();  
+    }
+
+    void RequestHandler::SetRoutingSettings(const RoutingSettings& routing_settings) {
+
     }
 }
