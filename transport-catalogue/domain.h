@@ -56,10 +56,32 @@ namespace transport_catalogue {
         double bus_velocity;
         int bus_wait_time;
     };
+
+    enum class RouteItemType { Wait, Stop };
+
+    struct WaitItem {
+        std::string stop_name;
+        double time;
+    };
+
+    struct BusItem {
+        std::string bus;
+        size_t span_count;
+        double time;
+    };
     
-    using RequestBodyDTO = std::variant<std::monostate,std::string_view,std::pair<std::string_view,std::string_view>>;
+    using RouteItem = std::variant<std::monostate, WaitItem, BusItem>;
+
+    struct RouteInfo {
+        double total_time;
+        std::vector<RouteItem> items;
+    };
+
+        
+    using StatRequestBodyDTO = std::variant<std::monostate,std::string_view,std::tuple<std::string_view,std::string_view>>;
+    using StatResponseBodyDTO = std::variant<std::monostate, std::string, BusInfo, StopInfo, RouteInfo>;
 
     using BaseRequestDTO = std::optional<std::variant<std::monostate, Bus, Stop>>;
-    using StatRequestDTO = std::optional<std::tuple<int,RequestType,std::optional<RequestBodyDTO>>>;
-    using StatResponseDTO = std::optional<std::tuple<int,std::variant<std::monostate, std::string, BusInfo, StopInfo>>>;
+    using StatRequestDTO = std::optional<std::tuple<int,RequestType,std::optional<StatRequestBodyDTO>>>;
+    using StatResponseDTO = std::optional<std::tuple<int,StatResponseBodyDTO>>;
 }

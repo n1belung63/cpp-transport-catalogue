@@ -29,6 +29,8 @@ public:
 
     std::optional<RouteInfo> BuildRoute(VertexId from, VertexId to) const;
 
+    void Update();
+
 private:
     struct RouteInternalData {
         Weight weight;
@@ -55,6 +57,7 @@ private:
 
     void RelaxRoute(VertexId vertex_from, VertexId vertex_to, const RouteInternalData& route_from,
                     const RouteInternalData& route_to) {
+        // constexpr Weight EPSILON = 0.0000;
         auto& route_relaxing = routes_internal_data_[vertex_from][vertex_to];
         const Weight candidate_weight = route_from.weight + route_to.weight;
         if (!route_relaxing || candidate_weight < route_relaxing->weight) {
@@ -95,19 +98,37 @@ Router<Weight>::Router(const Graph& graph)
 }
 
 template <typename Weight>
+void Router<Weight>::Update() {
+    routes_internal_data_.resize(graph_.GetVertexCount(),
+                            std::vector<std::optional<RouteInternalData>>(graph_.GetVertexCount()));
+    InitializeRoutesInternalData(graph_);
+
+    const size_t vertex_count = graph_.GetVertexCount();
+    for (VertexId vertex_through = 0; vertex_through < vertex_count; ++vertex_through) {
+        RelaxRoutesInternalDataThroughVertex(vertex_count, vertex_through);
+    }
+}
+
+template <typename Weight>
 std::optional<typename Router<Weight>::RouteInfo> Router<Weight>::BuildRoute(VertexId from,
                                                                              VertexId to) const {
     const auto& route_internal_data = routes_internal_data_.at(from).at(to);
     if (!route_internal_data) {
         return std::nullopt;
     }
-    const Weight weight = route_internal_data->weight;
+    Weight weight = route_internal_data->weight;
     std::vector<EdgeId> edges;
     for (std::optional<EdgeId> edge_id = route_internal_data->prev_edge;
          edge_id;
          edge_id = routes_internal_data_[from][graph_.GetEdge(*edge_id).from]->prev_edge)
     {
         edges.push_back(*edge_id);
+
+        // todo: make if operator
+
+        // std::optional<EdgeId> wait_edge_id = routes_internal_data_[graph_.GetEdge(*edge_id).from-1][graph_.GetEdge(*edge_id).from]->prev_edge;
+        // edges.push_back(*wait_edge_id);
+        // weight += graph_.GetEdge(*wait_edge_id).weight;
     }
     std::reverse(edges.begin(), edges.end());
 

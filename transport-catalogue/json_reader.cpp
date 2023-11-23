@@ -37,7 +37,7 @@ namespace transport_catalogue {
     }
 
     BaseRequestDTO JsonReader::GetBaseRequest(size_t i) {
-        const auto base_request = base_requests_storage_.at(i);
+        const JsonReader::BaseRequest& base_request = base_requests_storage_.at(i);
 
         switch (base_request.type) {
         case RequestType::AddStop:
@@ -57,7 +57,7 @@ namespace transport_catalogue {
     }
 
     StatRequestDTO JsonReader::GetStatRequest(size_t i) {
-        const auto stat_request = stat_requests_storage_.at(i);
+        const JsonReader::StatRequest& stat_request = stat_requests_storage_.at(i);
         switch (stat_request.type) {
         case RequestType::GetStopInfo:
             return std::tuple{ stat_request.id, 
@@ -74,14 +74,21 @@ namespace transport_catalogue {
         case RequestType::GetMap:
             return std::tuple{ stat_request.id, stat_request.type, std::nullopt };
             break;
-        case RequestType::GetRoute:
-            return std::tuple{ stat_request.id, stat_request.type, std::nullopt };
-            break; 
+        case RequestType::GetRoute: {
+            const std::tuple<std::string,std::string>& request_body = std::get<std::tuple<std::string,std::string>>(stat_request.request_body.value());
+            return std::tuple{ stat_request.id,
+                stat_request.type,
+                std::tuple<std::string_view,std::string_view>{ std::get<0>(request_body), std::get<1>(request_body)}
+            };
+        } break; 
         default:
             return std::nullopt;
             break;
         }     
     }
+
+    // using StatResponseBodyDTO = std::variant<std::monostate, std::string, BusInfo, StopInfo, RouteInfo>;
+    // using StatResponseDTO = std::optional<std::tuple<int,StatResponseBodyDTO>>;
 
     void JsonReader::AddResponse(const StatResponseDTO& resp_opt) {
         if (!resp_opt.has_value()) {
@@ -95,7 +102,19 @@ namespace transport_catalogue {
             return;
         }
    
-        const auto info = std::get<std::variant<std::monostate, std::string, BusInfo, StopInfo>>(resp);
+        const StatResponseBodyDTO info = std::get<StatResponseBodyDTO>(resp);
+
+        auto printErrorToJson {
+            [this](int request_id, const StatResponseBodyDTO& info) {
+                json::Node dict = json::Builder{}
+                    .StartDict()
+                        .Key("request_id"s).Value(request_id)
+                        .Key("error_message"s).Value(std::get<std::string>(info))
+                    .EndDict()
+                    .Build();
+                resp_.emplace_back(dict);
+            }
+        };
         
         if (request_id_to_type_.at(request_id) == RequestType::GetBusInfo) {
             if (std::holds_alternative<BusInfo>(info)) {
@@ -112,13 +131,7 @@ namespace transport_catalogue {
                 resp_.emplace_back(dict);
             }
             else {
-                json::Node dict = json::Builder{}
-                    .StartDict()
-                        .Key("request_id"s).Value(request_id)
-                        .Key("error_message"s).Value(std::get<std::string>(info))
-                    .EndDict()
-                    .Build();
-                resp_.emplace_back(dict);
+                printErrorToJson(request_id, info);
             } 
         }
         else if (request_id_to_type_.at(request_id) == RequestType::GetStopInfo) {
@@ -137,13 +150,7 @@ namespace transport_catalogue {
                 resp_.emplace_back(dict);
             }
             else {
-                json::Node dict = json::Builder{}
-                    .StartDict()
-                        .Key("request_id"s).Value(request_id)
-                        .Key("error_message"s).Value(std::get<std::string>(info))
-                    .EndDict()
-                    .Build();
-                resp_.emplace_back(dict);
+                printErrorToJson(request_id, info);
             }
         }
         else if (request_id_to_type_.at(request_id) == RequestType::GetMap) {
@@ -154,7 +161,40 @@ namespace transport_catalogue {
                     .EndDict()
                     .Build();
             resp_.emplace_back(dict);
-        }        
+        } 
+        else if (request_id_to_type_.at(request_id) == RequestType::GetRoute) {
+            if (std::holds_alternative<RouteInfo>(info)) {
+                const auto route_info = std::get<RouteInfo>(info);
+                json::Array items;
+                for (const RouteItem& item : route_info.items) {
+                    json::Dict dict;
+                    if (std::holds_alternative<WaitItem>(item)) {
+                        const auto& wait_item = std::get<WaitItem>(item);
+                        dict["stop_name"s] = wait_item.stop_name;
+                        dict["time"s] = wait_item.time;
+                        dict["type"s] = "Wait"s;
+                    } else if (std::holds_alternative<BusItem>(item)) {
+                        const auto& bus_item = std::get<BusItem>(item);
+                        dict["bus"s] = bus_item.bus;
+                        dict["span_count"s] = static_cast<int>(bus_item.span_count);
+                        dict["time"s] = bus_item.time;        
+                        dict["type"s] = "Bus"s;
+                    }
+                    items.emplace_back(dict);
+                }
+                json::Node dict = json::Builder{}
+                    .StartDict()
+                        .Key("items"s).Value(items)
+                        .Key("request_id"s).Value(request_id)
+                        .Key("total_time"s).Value(route_info.total_time)
+                    .EndDict()
+                    .Build();
+                resp_.emplace_back(dict);
+            }
+            else {
+                printErrorToJson(request_id, info);
+            }
+        }      
     }
 
     void JsonReader::PrintResponses(std::ostream& out) {
@@ -278,7 +318,7 @@ namespace transport_catalogue {
             return { request.at("id"s).AsInt(), RequestType::GetMap, std::nullopt };     
         }
         else if (type_str == "Route"s) {
-            return { request.at("id"s).AsInt(), RequestType::GetRoute, std::pair{ request.at("from"s).AsString(), request.at("to"s).AsString()} };     
+            return { request.at("id"s).AsInt(), RequestType::GetRoute, std::tuple{ request.at("from"s).AsString(), request.at("to"s).AsString()} };     
         }
         else {
             return { -1, RequestType::None, std::nullopt };

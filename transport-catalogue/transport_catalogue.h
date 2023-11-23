@@ -8,6 +8,7 @@
 #include <cstdint>
 
 #include "domain.h"
+#include "router.h"
 
 namespace transport_catalogue {
     class TransportCatalogue {
@@ -16,15 +17,35 @@ namespace transport_catalogue {
 
         void AddStop(const Stop& stop);
         StopInfo GetStopInfo(std::string_view stopname);
+
         void AddBus(const Bus& bus);
         BusInfo GetBusInfo(std::string_view busnum);
+
         BusExtendedInfo GetBusExtendedInfo(std::string_view busnum);
+
+        void BuildGraph(const RoutingSettings& routing_settings);
+
+        RouteInfo GetRoute(std::tuple<std::string_view,std::string_view> from_to);
 
     private:
         std::deque<Stop> stops_;
         std::unordered_map<std::string_view, Stop*> stopname_to_stop_;
         std::deque<Bus> buses_;
         std::unordered_map<std::string_view, Bus*> busname_to_bus_;
+
+        RoutingSettings routing_settings_;
+
+        // using StopVertex = std::pair<RouteItemType, std::string>;
+        graph::DirectedWeightedGraph<double> graph_;
+        graph::Router<double> router_;
+
+        struct StopItemPair { 
+            graph::VertexId wait_on_stop_id;
+            graph::VertexId stop_id;
+        };
+
+        std::map<std::string_view, StopItemPair> stopname_to_vertex_id_pair_;
+        std::map<graph::VertexId, RouteItem> edge_id_to_route_item_;
 
         struct StopPairHasher {
             size_t operator() (std::pair<Stop*, Stop*> pair) const {          
@@ -40,14 +61,12 @@ namespace transport_catalogue {
         std::unordered_map<Stop*, std::unordered_set<Bus*>> stop_to_buses_;
 
         Stop FindStop(std::string_view stopname);
+        Stop* FindStopV2(std::string_view stopname);
         Bus FindBus(std::string_view busnum);
+        Bus* FindBusV2(std::string_view busnum);
         void AddDummyStop(std::string_view stopname);
         void SetDistance(std::string_view from_stop_name, std::string_view to_stop_name, double distance=0);
         double GetDistance(std::string_view from_stop_name, std::string_view to_stop_name);
     };
-
-    namespace detail {
-        std::vector<std::string_view> SplitStopNames(std::string_view str, char delimeter);
-    }
 }
 

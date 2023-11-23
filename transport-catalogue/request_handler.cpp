@@ -1,5 +1,7 @@
 #include "request_handler.h"
 
+#include <iostream>
+
 namespace transport_catalogue {
     using namespace std::string_literals;
 
@@ -34,13 +36,13 @@ namespace transport_catalogue {
         
     }
 
-    StatResponseDTO RequestHandler::StatRequest(StatRequestDTO stat_request_opt) {
+    StatResponseDTO RequestHandler::StatRequest(const StatRequestDTO& stat_request_opt) {
         if (!stat_request_opt.has_value()) {
             return std::nullopt;
         }
         const auto& stat_request = stat_request_opt.value();
         try {
-            const auto request_body = std::get<std::optional<RequestBodyDTO>>(stat_request);
+            const auto request_body = std::get<std::optional<StatRequestBodyDTO>>(stat_request);
             switch (std::get<RequestType>(stat_request))
             {
             case RequestType::GetStopInfo:
@@ -55,7 +57,12 @@ namespace transport_catalogue {
                 break;
             case RequestType::GetMap:
                 return std::tuple{ std::get<int>(stat_request), RenderMap() };
-                break;    
+                break;
+            case RequestType::GetRoute:
+                return std::tuple{ std::get<int>(stat_request),
+                    tc_.GetRoute(std::get<std::tuple<std::string_view,std::string_view>>(request_body.value()))
+                };
+                break;
             default:
                 return std::nullopt;
                 break;
@@ -76,7 +83,7 @@ namespace transport_catalogue {
         return ss.str();  
     }
 
-    void RequestHandler::SetRoutingSettings(const RoutingSettings& routing_settings) {
-
+    void RequestHandler::BuildGraph(const RoutingSettings& routing_settings) {
+        tc_.BuildGraph(routing_settings);
     }
 }

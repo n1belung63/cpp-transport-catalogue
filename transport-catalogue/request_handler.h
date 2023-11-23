@@ -21,8 +21,8 @@ namespace transport_catalogue {
     public:
         RequestHandler(TransportCatalogue& db, transport_catalogue::MapRenderer& renderer) : tc_(db), renderer_(renderer) { }
         void BaseRequest(BaseRequestDTO base_request);
-        StatResponseDTO StatRequest(StatRequestDTO stat_request);
-        void SetRoutingSettings(const RoutingSettings& routing_settings);
+        StatResponseDTO StatRequest(const StatRequestDTO& stat_request);
+        void BuildGraph(const RoutingSettings& routing_settings);
     private:
         TransportCatalogue& tc_;
         MapRenderer& renderer_;

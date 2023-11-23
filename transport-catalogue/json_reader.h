@@ -18,7 +18,7 @@
 namespace transport_catalogue {
     class JsonReader {
     private:
-        using RequestBody = std::variant<std::monostate,std::string,std::pair<std::string,std::string>>;
+        using RequestBody = std::variant<std::monostate,std::string,std::tuple<std::string,std::string>>;
 
         struct BaseRequest {
             RequestType type;
@@ -58,7 +58,8 @@ namespace transport_catalogue {
         std::unordered_map<int, RequestType> request_id_to_type_;
 
         BaseRequest ResolveBaseRequest(const json::Dict& request); 
-        StatRequest ResolveStatRequest(const json::Dict& request);  
+        StatRequest ResolveStatRequest(const json::Dict& request);
+          
         Stop ParseStop(const json::Dict& request);
         Bus ParseBus(const json::Dict& request);
         RenderSettings ParseRendererSettings(const json::Dict& settings);
