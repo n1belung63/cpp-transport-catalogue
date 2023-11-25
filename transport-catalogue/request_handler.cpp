@@ -60,7 +60,7 @@ namespace transport_catalogue {
                 break;
             case RequestType::GetRoute:
                 return std::tuple{ std::get<int>(stat_request),
-                    tc_.GetRoute(std::get<std::tuple<std::string_view,std::string_view>>(request_body.value()))
+                    transport_router_.GetRoute(std::get<std::tuple<std::string_view,std::string_view>>(request_body.value()))
                 };
                 break;
             default:
@@ -81,9 +81,5 @@ namespace transport_catalogue {
         std::stringstream ss;
         renderer_.Render(ss);
         return ss.str();  
-    }
-
-    void RequestHandler::BuildGraph(const RoutingSettings& routing_settings) {
-        tc_.BuildGraph(routing_settings);
     }
 }

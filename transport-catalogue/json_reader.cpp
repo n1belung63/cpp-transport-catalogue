@@ -62,13 +62,13 @@ namespace transport_catalogue {
         case RequestType::GetStopInfo:
             return std::tuple{ stat_request.id, 
                 stat_request.type, 
-                std::get<std::string>(stat_request.request_body.value()) 
+                std::string_view(std::get<std::string>(stat_request.request_body.value()))
             };
             break;
         case RequestType::GetBusInfo:
             return std::tuple{ stat_request.id,
                 stat_request.type,
-                std::get<std::string>(stat_request.request_body.value())
+                std::string_view(std::get<std::string>(stat_request.request_body.value()))
             };
             break;
         case RequestType::GetMap:
@@ -78,7 +78,10 @@ namespace transport_catalogue {
             const std::tuple<std::string,std::string>& request_body = std::get<std::tuple<std::string,std::string>>(stat_request.request_body.value());
             return std::tuple{ stat_request.id,
                 stat_request.type,
-                std::tuple<std::string_view,std::string_view>{ std::get<0>(request_body), std::get<1>(request_body)}
+                std::tuple<std::string_view,std::string_view>{
+                    std::string_view(std::get<0>(request_body)),
+                    std::string_view(std::get<1>(request_body))
+                }
             };
         } break; 
         default:
@@ -86,9 +89,6 @@ namespace transport_catalogue {
             break;
         }     
     }
-
-    // using StatResponseBodyDTO = std::variant<std::monostate, std::string, BusInfo, StopInfo, RouteInfo>;
-    // using StatResponseDTO = std::optional<std::tuple<int,StatResponseBodyDTO>>;
 
     void JsonReader::AddResponse(const StatResponseDTO& resp_opt) {
         if (!resp_opt.has_value()) {
@@ -296,32 +296,32 @@ namespace transport_catalogue {
     JsonReader::BaseRequest JsonReader::ResolveBaseRequest(const json::Dict& request) {
         const std::string& type_str = request.at("type"s).AsString();
         if (type_str == "Bus"s) {
-            return { RequestType::AddBus, request };  
+            return BaseRequest{ RequestType::AddBus, request };  
         }
         else if (type_str == "Stop"s) {
-            return { RequestType::AddStop, request };    
+            return BaseRequest{ RequestType::AddStop, request };    
         }
         else {
-            return { RequestType::None, std::nullopt };
+            return BaseRequest{ RequestType::None, std::nullopt };
         }
     }
 
     JsonReader::StatRequest JsonReader::ResolveStatRequest(const json::Dict& request) {
         const std::string& type_str = request.at("type"s).AsString();
         if (type_str == "Bus"s) {
-            return { request.at("id"s).AsInt(), RequestType::GetBusInfo, request.at("name"s).AsString() };   
+            return StatRequest{ request.at("id"s).AsInt(), RequestType::GetBusInfo, request.at("name"s).AsString() };   
         }
         else if (type_str == "Stop"s) {
-            return { request.at("id"s).AsInt(), RequestType::GetStopInfo, request.at("name"s).AsString() };     
+            return StatRequest{ request.at("id"s).AsInt(), RequestType::GetStopInfo, request.at("name"s).AsString() };     
         }
         else if (type_str == "Map"s) {
-            return { request.at("id"s).AsInt(), RequestType::GetMap, std::nullopt };     
+            return StatRequest{ request.at("id"s).AsInt(), RequestType::GetMap, std::nullopt };     
         }
         else if (type_str == "Route"s) {
-            return { request.at("id"s).AsInt(), RequestType::GetRoute, std::tuple{ request.at("from"s).AsString(), request.at("to"s).AsString()} };     
+            return StatRequest{ request.at("id"s).AsInt(), RequestType::GetRoute, std::tuple{ request.at("from"s).AsString(), request.at("to"s).AsString()} };     
         }
         else {
-            return { -1, RequestType::None, std::nullopt };
+            return StatRequest{ -1, RequestType::None, std::nullopt };
         }
     }
 }

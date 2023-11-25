@@ -24,12 +24,10 @@ private:
     using IncidentEdgesRange = ranges::Range<typename IncidenceList::const_iterator>;
 
 public:
-    DirectedWeightedGraph() = default;
-    explicit DirectedWeightedGraph(size_t vertex_count);
+    DirectedWeightedGraph(size_t vertex_count);
     EdgeId AddEdge(const Edge<Weight>& edge);
 
     void SetVertexCount(size_t vertex_count);
-    Weight SumWeights(Weight w1, Weight w2);
 
     size_t GetVertexCount() const;
     size_t GetEdgeCount() const;
@@ -49,19 +47,6 @@ DirectedWeightedGraph<Weight>::DirectedWeightedGraph(size_t vertex_count)
 template <typename Weight>
 void DirectedWeightedGraph<Weight>::SetVertexCount(size_t vertex_count) {
     incidence_lists_.resize(vertex_count);
-}
-
-template <typename Weight>
-Weight DirectedWeightedGraph<Weight>::SumWeights(Weight w1, Weight w2) {
-    // Weight result = 0.0;
-    // Weight c = 0.0;
-
-    // Weight y = w1 - c;
-    // Weight t = result + y;
-    // c = (t - result) - y;
-    // result = t;
-
-    return w1 + w2;
 }
 
 template <typename Weight>

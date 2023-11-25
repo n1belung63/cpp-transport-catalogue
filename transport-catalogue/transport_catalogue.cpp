@@ -10,7 +10,7 @@
 namespace transport_catalogue {
     using namespace std::string_literals;
 
-    TransportCatalogue::TransportCatalogue() : router_(graph_) { }
+    TransportCatalogue::TransportCatalogue() { }
 
     void TransportCatalogue::AddDummyStop(std::string_view stopname) {
         Stop stop{};
@@ -36,6 +36,11 @@ namespace transport_catalogue {
             auto to_ref = stopname_to_stop_.at(stopname);
 
             stop_pair_to_distance_[{from_ref,to_ref}] = static_cast<double>(range);
+
+            if (stop_pair_to_distance_.count({to_ref, from_ref}) == 0) {
+                stop_pair_to_distance_[{to_ref, from_ref}] = stop_pair_to_distance_.at({from_ref, to_ref});
+            }
+            // stop_pair_to_distance_[{from_ref, to_ref}] = stop_pair_to_distance_[{to_ref, from_ref}];
         }
     }
 
@@ -58,7 +63,10 @@ namespace transport_catalogue {
     }
 
     StopInfo TransportCatalogue::GetStopInfo(std::string_view stopname) {
-        TransportCatalogue::FindStopV2(stopname);
+        // TransportCatalogue::FindStopV2(stopname);
+        if (stopname_to_stop_.count(stopname) < 1) {
+            throw std::out_of_range("not found"s);
+        }
 
         StopInfo stopinfo;
         stopinfo.name = stopname;
@@ -100,7 +108,7 @@ namespace transport_catalogue {
         } 
     }
 
-    Bus* TransportCatalogue::FindBusV2(std::string_view busnum) {
+    const Bus* TransportCatalogue::FindBusV2(std::string_view busnum) const {
         if (busname_to_bus_.count(busnum)) {
             return busname_to_bus_.at(busnum);
         }
@@ -131,7 +139,7 @@ namespace transport_catalogue {
         }  
     }
 
-    double TransportCatalogue::GetDistance(std::string_view from_stop_name, std::string_view to_stop_name) {
+    double TransportCatalogue::GetDistance(std::string_view from_stop_name, std::string_view to_stop_name) const {
         auto from_ref = stopname_to_stop_.at(from_stop_name);
         auto to_ref = stopname_to_stop_.at(to_stop_name);
 
@@ -139,7 +147,7 @@ namespace transport_catalogue {
     }
 
     BusInfo TransportCatalogue::GetBusInfo(std::string_view busnum) {
-        Bus* bus_ref = TransportCatalogue::FindBusV2(busnum);
+        const Bus* bus_ref = TransportCatalogue::FindBusV2(busnum);
 
         BusInfo businfo;
         businfo.num = busnum;
@@ -154,8 +162,9 @@ namespace transport_catalogue {
         double direct_route_length = 0.0;
 
         for (size_t from=0, to=1; to<bus_ref->stopnames.size(); ++from, ++to) {
-            SetDistance(bus_ref->stopnames[from], bus_ref->stopnames[to]);
-            businfo.route_length += GetDistance(bus_ref->stopnames[from], bus_ref->stopnames[to]);
+            // SetDistance(bus_ref->stopnames[from], bus_ref->stopnames[to]);'
+            double d_route = GetDistance(bus_ref->stopnames[from], bus_ref->stopnames[to]);
+            businfo.route_length += d_route;
 
             direct_route_length += ComputeDistance(
                 stopname_to_stop_.at(bus_ref->stopnames[from])->coords, 
@@ -165,8 +174,9 @@ namespace transport_catalogue {
 
         if (!bus_ref->is_circular_route) {
             for (int from=bus_ref->stopnames.size()-1, to=bus_ref->stopnames.size()-2; to>=0; from--, to--) {
-                SetDistance(bus_ref->stopnames[from], bus_ref->stopnames[to]);
-                businfo.route_length += GetDistance(bus_ref->stopnames[from], bus_ref->stopnames[to]);
+                // SetDistance(bus_ref->stopnames[from], bus_ref->stopnames[to]);
+                double d_route = GetDistance(bus_ref->stopnames[from], bus_ref->stopnames[to]);
+                businfo.route_length += d_route;
 
                 direct_route_length += ComputeDistance(
                     stopname_to_stop_.at(bus_ref->stopnames[from])->coords,
@@ -181,7 +191,7 @@ namespace transport_catalogue {
     }
 
     BusExtendedInfo TransportCatalogue::GetBusExtendedInfo(std::string_view busnum) {
-        Bus* bus_ref = TransportCatalogue::FindBusV2(busnum);
+        const Bus* bus_ref = TransportCatalogue::FindBusV2(busnum);
 
         BusExtendedInfo businfo;
 
@@ -197,103 +207,26 @@ namespace transport_catalogue {
         return businfo;
     }
 
-    void TransportCatalogue::BuildGraph(const RoutingSettings& routing_settings) {
-        constexpr double SECONDS_IN_MINUTE = 60.0;
-        constexpr double METERS_IN_KILOMETER = 1000.0;
+    const std::vector<std::string_view> TransportCatalogue::GetBusList() const {
+        std::vector<std::string_view> bus_names;
+        bus_names.reserve(buses_.size());
 
-        routing_settings_ = routing_settings;
-        graph_.SetVertexCount(stops_.size() * 2);
-
-        const double meters_to_minutes_multiplier = 1.0 / METERS_IN_KILOMETER / routing_settings_.bus_velocity * SECONDS_IN_MINUTE;
-        
-        auto update_stopname_to_vertex_id_pair {
-            [this](const std::string& stop_name, graph::VertexId & id) {
-                stopname_to_vertex_id_pair_[stop_name] = { id, id + 1 };
-                id += 2;
-            } 
-        };
-
-        auto abs_of_size_t_diff {[](auto a, auto b) { return (a > b) ? a - b : b - a; } };
-
-        graph::VertexId id = 0;
-        for (const Bus& bus : buses_) {
-            Bus* bus_ref = busname_to_bus_.at(bus.num);
-
-            for (const auto& stop_name : bus_ref->stopnames) {
-                if (stopname_to_vertex_id_pair_.count(stop_name) < 1) {
-                    update_stopname_to_vertex_id_pair(stop_name, id);
-                    graph::EdgeId edge_id = graph_.AddEdge({ 
-                        stopname_to_vertex_id_pair_.at(stop_name).wait_on_stop_id,
-                        stopname_to_vertex_id_pair_.at(stop_name).stop_id,
-                        static_cast<double>(routing_settings_.bus_wait_time)
-                    });
-                    edge_id_to_route_item_[edge_id] = WaitItem{ stop_name, static_cast<double>(routing_settings_.bus_wait_time) }; 
-                }
-            }
-
-            size_t stops_count = bus.stopnames.size();
-            size_t total_stops_count = (bus.is_circular_route) ? stops_count : 2 * stops_count - 1;
-
-            size_t from, to, prev_to;
-            size_t from_transparent = 0;
-            while (from_transparent < total_stops_count - 1) {
-                size_t to_transparent = from_transparent + 1;
-                from = (from_transparent < stops_count) ? from_transparent : total_stops_count - 1 - from_transparent;
-
-                double time = 0.0;
-                double running_error = 0.0;
-
-                while (to_transparent < total_stops_count) {
-                    to = (to_transparent < stops_count) ? to_transparent : total_stops_count - 1 - to_transparent;
-                    prev_to = (to_transparent < stops_count) ? to - 1 : to + 1;
-
-                    SetDistance(bus_ref->stopnames[prev_to], bus_ref->stopnames[to]);
-
-                    // double difference = (GetDistance(bus_ref->stopnames[prev_to], bus_ref->stopnames[to])) - running_error;
-                    // double temp = time + difference;
-                    // running_error = (temp - time) - difference;
-                    // time = temp;
-
-                    time += GetDistance(bus_ref->stopnames[prev_to], bus_ref->stopnames[to]);
-
-                    graph::EdgeId edge_id = graph_.AddEdge({ 
-                        stopname_to_vertex_id_pair_.at(bus_ref->stopnames[from]).stop_id,
-                        stopname_to_vertex_id_pair_.at(bus_ref->stopnames[to]).wait_on_stop_id,
-                        time * meters_to_minutes_multiplier
-                    });
-                    size_t span_count = abs_of_size_t_diff(to, from);
-                    edge_id_to_route_item_[edge_id] = BusItem{ bus.num, span_count, time * meters_to_minutes_multiplier };
-
-                    ++to_transparent;
-                }
-                ++from_transparent;
-            }
+        for (const auto& bus : buses_) {
+            bus_names.emplace_back(bus.num);
         }
-        router_.Update();
+
+        return bus_names;
     }
 
-    RouteInfo TransportCatalogue::GetRoute(std::tuple<std::string_view,std::string_view> from_to) {
-        if (stopname_to_vertex_id_pair_.count(std::get<0>(from_to)) < 1 || stopname_to_vertex_id_pair_.count(std::get<1>(from_to)) < 1) {
-            throw std::out_of_range("not found"s);
+    const std::vector<std::string_view> TransportCatalogue::GetStopList() const {
+        std::vector<std::string_view> stop_names;
+        stop_names.reserve(stops_.size());
+
+        for (const auto& stop : stops_) {
+            stop_names.emplace_back(stop.name);
         }
 
-        graph::VertexId from = stopname_to_vertex_id_pair_[std::get<0>(from_to)].wait_on_stop_id;
-        graph::VertexId to = stopname_to_vertex_id_pair_[std::get<1>(from_to)].wait_on_stop_id;
-        const auto raw_route_info = router_.BuildRoute(from, to);
-
-        RouteInfo route_info;
-        if (raw_route_info.has_value()) {
-            route_info.total_time = raw_route_info.value().weight;
-
-            route_info.items.reserve(raw_route_info.value().edges.size());
-            for (graph::EdgeId edge_id : raw_route_info.value().edges) {
-                route_info.items.emplace_back(edge_id_to_route_item_.at(edge_id));         
-            }
-        } else {
-            throw std::out_of_range("not found"s);
-        }
-
-        return route_info;
+        return stop_names;
     }
 }
   

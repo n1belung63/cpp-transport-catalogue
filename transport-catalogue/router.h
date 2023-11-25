@@ -20,7 +20,7 @@ private:
     using Graph = DirectedWeightedGraph<Weight>;
 
 public:
-    explicit Router(const Graph& graph);
+    Router(Graph& graph);
 
     struct RouteInfo {
         Weight weight;
@@ -57,7 +57,6 @@ private:
 
     void RelaxRoute(VertexId vertex_from, VertexId vertex_to, const RouteInternalData& route_from,
                     const RouteInternalData& route_to) {
-        // constexpr Weight EPSILON = 0.0000;
         auto& route_relaxing = routes_internal_data_[vertex_from][vertex_to];
         const Weight candidate_weight = route_from.weight + route_to.weight;
         if (!route_relaxing || candidate_weight < route_relaxing->weight) {
@@ -79,12 +78,12 @@ private:
     }
 
     static constexpr Weight ZERO_WEIGHT{};
-    const Graph& graph_;
+    Graph& graph_;
     RoutesInternalData routes_internal_data_;
 };
 
 template <typename Weight>
-Router<Weight>::Router(const Graph& graph)
+Router<Weight>::Router(Graph& graph)
     : graph_(graph)
     , routes_internal_data_(graph.GetVertexCount(),
                             std::vector<std::optional<RouteInternalData>>(graph.GetVertexCount()))
