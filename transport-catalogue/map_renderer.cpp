@@ -27,6 +27,10 @@ void MapRenderer::SetUp(const RenderSettings& settings) {
     settings_ = settings;
 }
 
+const RenderSettings MapRenderer::GetRendererSettings() const {
+    return settings_;
+}
+
 void MapRenderer::AddRoutesLayer(svg::Document& doc, const transport_catalogue::SphereProjector& proj) {
     const size_t color_palette_size = settings_.color_palette.size();
 

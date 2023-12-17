@@ -96,6 +96,8 @@ public:
 
     void SetUp(const RenderSettings& settings);
 
+    const RenderSettings GetRendererSettings() const;
+
     void Render(std::ostream& out);
 
     void SetBusExtendedInfo(const BusExtendedInfo& bus_info);
