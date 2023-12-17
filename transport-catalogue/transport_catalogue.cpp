@@ -22,6 +22,9 @@ namespace transport_catalogue {
     void TransportCatalogue::AddStop(const Stop& stop) {
         if (stopname_to_stop_.count(stop.name)) {
             stopname_to_stop_.at(stop.name)->coords = { stop.coords.lat, stop.coords.lng };
+            stopname_to_stop_.at(stop.name)->range_to_other_stop.insert(
+                stop.range_to_other_stop.begin(), stop.range_to_other_stop.end()
+            );
         }
         else {
             stops_.emplace_back(stop);
@@ -40,11 +43,10 @@ namespace transport_catalogue {
             if (stop_pair_to_distance_.count({to_ref, from_ref}) == 0) {
                 stop_pair_to_distance_[{to_ref, from_ref}] = stop_pair_to_distance_.at({from_ref, to_ref});
             }
-            // stop_pair_to_distance_[{from_ref, to_ref}] = stop_pair_to_distance_[{to_ref, from_ref}];
         }
     }
 
-    Stop TransportCatalogue::FindStop(std::string_view stopname) {
+    const Stop TransportCatalogue::FindStop(std::string_view stopname) const {
         if (stopname_to_stop_.count(stopname)) {
             return *stopname_to_stop_.at(stopname);
         }
@@ -53,7 +55,7 @@ namespace transport_catalogue {
         }
     }
 
-    Stop* TransportCatalogue::FindStopV2(std::string_view stopname) {
+    const Stop* TransportCatalogue::FindStopRef(std::string_view stopname) const {
         if (stopname_to_stop_.count(stopname)) {
             return stopname_to_stop_.at(stopname);
         }
@@ -63,7 +65,7 @@ namespace transport_catalogue {
     }
 
     StopInfo TransportCatalogue::GetStopInfo(std::string_view stopname) {
-        // TransportCatalogue::FindStopV2(stopname);
+        // TransportCatalogue::FindStopRef(stopname);
         if (stopname_to_stop_.count(stopname) < 1) {
             throw std::out_of_range("not found"s);
         }
@@ -99,7 +101,7 @@ namespace transport_catalogue {
         }
     }
 
-    Bus TransportCatalogue::FindBus(std::string_view busnum) {
+    const Bus TransportCatalogue::FindBus(std::string_view busnum) const {
         if (busname_to_bus_.count(busnum)) {
             return *busname_to_bus_.at(busnum);
         }
@@ -108,35 +110,13 @@ namespace transport_catalogue {
         } 
     }
 
-    const Bus* TransportCatalogue::FindBusV2(std::string_view busnum) const {
+    const Bus* TransportCatalogue::FindBusRef(std::string_view busnum) const {
         if (busname_to_bus_.count(busnum)) {
             return busname_to_bus_.at(busnum);
         }
         else {
             throw std::out_of_range("not found"s);
         } 
-    }
-
-    void TransportCatalogue::SetDistance(std::string_view from_stop_name, std::string_view to_stop_name, double distance) {
-        auto from_ref = stopname_to_stop_.at(from_stop_name);
-        auto to_ref = stopname_to_stop_.at(to_stop_name);
-
-        if (distance != 0) {
-            stop_pair_to_distance_[{from_ref, to_ref}] = distance;
-        }
-        else {
-            if (stop_pair_to_distance_.count({from_ref, to_ref}) == 0) {
-                if (stop_pair_to_distance_.count({to_ref, from_ref}) == 0) {
-                    stop_pair_to_distance_[{from_ref, to_ref}] = ComputeDistance(
-                        from_ref->coords,
-                        to_ref->coords
-                    );
-                }
-                else {
-                    stop_pair_to_distance_[{from_ref, to_ref}] = stop_pair_to_distance_[{to_ref, from_ref}];
-                }
-            }
-        }  
     }
 
     double TransportCatalogue::GetDistance(std::string_view from_stop_name, std::string_view to_stop_name) const {
@@ -147,7 +127,7 @@ namespace transport_catalogue {
     }
 
     BusInfo TransportCatalogue::GetBusInfo(std::string_view busnum) {
-        const Bus* bus_ref = TransportCatalogue::FindBusV2(busnum);
+        const Bus* bus_ref = TransportCatalogue::FindBusRef(busnum);
 
         BusInfo businfo;
         businfo.num = busnum;
@@ -162,7 +142,6 @@ namespace transport_catalogue {
         double direct_route_length = 0.0;
 
         for (size_t from=0, to=1; to<bus_ref->stopnames.size(); ++from, ++to) {
-            // SetDistance(bus_ref->stopnames[from], bus_ref->stopnames[to]);'
             double d_route = GetDistance(bus_ref->stopnames[from], bus_ref->stopnames[to]);
             businfo.route_length += d_route;
 
@@ -174,7 +153,6 @@ namespace transport_catalogue {
 
         if (!bus_ref->is_circular_route) {
             for (int from=bus_ref->stopnames.size()-1, to=bus_ref->stopnames.size()-2; to>=0; from--, to--) {
-                // SetDistance(bus_ref->stopnames[from], bus_ref->stopnames[to]);
                 double d_route = GetDistance(bus_ref->stopnames[from], bus_ref->stopnames[to]);
                 businfo.route_length += d_route;
 
@@ -191,7 +169,7 @@ namespace transport_catalogue {
     }
 
     BusExtendedInfo TransportCatalogue::GetBusExtendedInfo(std::string_view busnum) {
-        const Bus* bus_ref = TransportCatalogue::FindBusV2(busnum);
+        const Bus* bus_ref = TransportCatalogue::FindBusRef(busnum);
 
         BusExtendedInfo businfo;
 
@@ -200,7 +178,7 @@ namespace transport_catalogue {
         businfo.stops_and_coordinates.reserve(bus_ref->stopnames.size());
 
         for (const auto&  stop_name : bus_ref->stopnames) {
-            Stop* stop_ref = TransportCatalogue::FindStopV2(stop_name);
+            const Stop* stop_ref = TransportCatalogue::FindStopRef(stop_name);
             businfo.stops_and_coordinates.push_back({stop_name, stop_ref->coords});
         }
 

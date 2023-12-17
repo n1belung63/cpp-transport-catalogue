@@ -55,8 +55,7 @@ private:
         }
     }
 
-    void RelaxRoute(VertexId vertex_from, VertexId vertex_to, const RouteInternalData& route_from,
-                    const RouteInternalData& route_to) {
+    void RelaxRoute(VertexId vertex_from, VertexId vertex_to, const RouteInternalData& route_from, const RouteInternalData& route_to) {
         auto& route_relaxing = routes_internal_data_[vertex_from][vertex_to];
         const Weight candidate_weight = route_from.weight + route_to.weight;
         if (!route_relaxing || candidate_weight < route_relaxing->weight) {
@@ -109,8 +108,7 @@ void Router<Weight>::Update() {
 }
 
 template <typename Weight>
-std::optional<typename Router<Weight>::RouteInfo> Router<Weight>::BuildRoute(VertexId from,
-                                                                             VertexId to) const {
+std::optional<typename Router<Weight>::RouteInfo> Router<Weight>::BuildRoute(VertexId from, VertexId to) const {
     const auto& route_internal_data = routes_internal_data_.at(from).at(to);
     if (!route_internal_data) {
         return std::nullopt;

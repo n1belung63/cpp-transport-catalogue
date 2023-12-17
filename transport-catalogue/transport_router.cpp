@@ -10,11 +10,52 @@
 namespace transport_catalogue {
     using namespace std::string_literals;
 
+    void TransportRouter::UpdateRouter() {
+        router_.Update();
+    }
+
+    const graph::DirectedWeightedGraph<double>& TransportRouter::GetGraph() const {
+        return std::ref(graph_);
+    }
+
+    graph::DirectedWeightedGraph<double>& TransportRouter::GetGraph() {
+        return std::ref(graph_);
+    }
+
+    const std::map<std::string_view, TransportRouter::StopItemPair>& TransportRouter::GetStopNameToVertexIdPair() const {
+        return std::ref(stopname_to_vertex_id_pair_);
+    }
+
+    const std::map<graph::VertexId, RouteItem>& TransportRouter::GetEdgeIdToRouteItem() const {
+        return std::ref(edge_id_to_route_item_);
+    }
+
+    void TransportRouter::SetStopnameToVertexIdPair(const std::map<std::string, StopItemPair>& stopname_to_vertex_id_pair) {
+        for (const auto& [key, value] : stopname_to_vertex_id_pair) {
+            const Stop* stop_ref = tc_.FindStopRef(key);
+            stopname_to_vertex_id_pair_.insert({ stop_ref->name, value });
+        }
+    }
+
+    void TransportRouter::SetEdgeIdToRouteItem(const std::map<graph::VertexId, RouteItem>& edge_id_to_route_item) {
+        for (const auto& item : edge_id_to_route_item) {
+            edge_id_to_route_item_.insert(item);
+        }
+    }
+
+    void TransportRouter::SetRoutingSettings(const RoutingSettings& routing_settings) {
+        routing_settings_ = routing_settings;
+    }
+
+    const RoutingSettings TransportRouter::GetRoutingSettings() const {
+        return routing_settings_;
+    }
+
     void TransportRouter::SetUp(const RoutingSettings& routing_settings) {
         constexpr double SECONDS_IN_MINUTE = 60.0;
         constexpr double METERS_IN_KILOMETER = 1000.0;
 
-        routing_settings_ = routing_settings;
+        SetRoutingSettings(routing_settings);
 
         const auto stop_names = tc_.GetStopList();
         const auto bus_names = tc_.GetBusList();
@@ -33,7 +74,7 @@ namespace transport_catalogue {
 
         graph::VertexId id = 0;
         for (const auto& bus_num : bus_names) {
-            const Bus* bus_ref = tc_.FindBusV2(bus_num);
+            const Bus* bus_ref = tc_.FindBusRef(bus_num);
 
             for (const auto& stop_name : bus_ref->stopnames) {
                 if (stopname_to_vertex_id_pair_.count(stop_name) < 1) {

@@ -22,13 +22,15 @@ namespace transport_catalogue {
 
         BusExtendedInfo GetBusExtendedInfo(std::string_view busnum);
 
-        const Bus* FindBusV2(std::string_view busnum) const;
-
         const std::vector<std::string_view> GetBusList() const;
-
         const std::vector<std::string_view> GetStopList() const;
 
         double GetDistance(std::string_view from_stop_name, std::string_view to_stop_name) const;
+
+        const Stop FindStop(std::string_view stopname) const;
+        const Bus FindBus(std::string_view busnum) const;
+        const Stop* FindStopRef(std::string_view stopname) const;
+        const Bus* FindBusRef(std::string_view busnum) const;
 
     private:
         std::deque<Stop> stops_;
@@ -49,11 +51,7 @@ namespace transport_catalogue {
         std::unordered_map<std::pair<Stop*, Stop*>, double, StopPairHasher> stop_pair_to_distance_;
         std::unordered_map<Stop*, std::unordered_set<Bus*>> stop_to_buses_;
 
-        Stop FindStop(std::string_view stopname);
-        Stop* FindStopV2(std::string_view stopname);
-        Bus FindBus(std::string_view busnum);
         void AddDummyStop(std::string_view stopname);
-        void SetDistance(std::string_view from_stop_name, std::string_view to_stop_name, double distance=0);
     };
 }
 

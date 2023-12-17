@@ -9,6 +9,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <optional>
+#include <filesystem>
 
 #include "transport_catalogue.h"
 #include "request_handler.h"
@@ -44,6 +45,7 @@ namespace transport_catalogue {
 
         RenderSettings GetRendererSettings();
         RoutingSettings GetRoutingSettings();
+        std::filesystem::path GetSerializationFilePath();
 
         void AddResponse(const StatResponseDTO& resp);
 
@@ -54,6 +56,8 @@ namespace transport_catalogue {
         json::Dict render_settings_;
         json::Dict routing_settings_;
         json::Array resp_;
+
+        std::filesystem::path serialization_file_path_; 
 
         std::unordered_map<uint64_t, RequestType> request_id_to_type_;
 

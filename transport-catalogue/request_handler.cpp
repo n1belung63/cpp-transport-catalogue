@@ -31,7 +31,7 @@ namespace transport_catalogue {
                 tc_.AddStop(std::get<Stop>(base_request.value()));
             }
         } else {
-            // todo: raise error?
+            // todo: raise error
         }
         
     }
@@ -75,7 +75,7 @@ namespace transport_catalogue {
     }
 
     std::string RequestHandler::RenderMap() {
-        for (const auto& busnum : buses_names_) {
+        for (const auto busnum : tc_.GetBusList()) {
             renderer_.SetBusExtendedInfo(tc_.GetBusExtendedInfo(busnum));
         }   
         std::stringstream ss;

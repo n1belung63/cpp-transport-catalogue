@@ -29,7 +29,12 @@ namespace transport_catalogue {
 
         if (json_obj.count("routing_settings"s)) {
             routing_settings_ = json_obj.at("routing_settings"s).AsMap();
-        }  
+        }
+
+        if (json_obj.count("serialization_settings"s)) {
+            serialization_file_path_ = std::filesystem::current_path() 
+                /= json_obj.at("serialization_settings"s).AsMap().at("file").AsString(); 
+        }
     }
 
     size_t JsonReader::GetBaseRequestCount() const {
@@ -210,6 +215,10 @@ namespace transport_catalogue {
             routing_settings_.at("bus_velocity").AsDouble(),
             routing_settings_.at("bus_wait_time").AsInt()
         };
+    }
+
+    std::filesystem::path JsonReader::GetSerializationFilePath() {
+        return serialization_file_path_;
     }
 
     Stop JsonReader::ParseStop(const json::Dict& request) {
