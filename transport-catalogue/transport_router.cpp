@@ -109,8 +109,6 @@ namespace transport_catalogue {
                     running_error = (temp - time) - difference;
                     time = temp;
                     
-                    // time += d_time;
-
                     graph::EdgeId edge_id = graph_.AddEdge({ 
                         stopname_to_vertex_id_pair_.at(bus_ref->stopnames[from]).stop_id,
                         stopname_to_vertex_id_pair_.at(bus_ref->stopnames[to]).wait_on_stop_id,

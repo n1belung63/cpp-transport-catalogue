@@ -18,7 +18,7 @@ set(PROTO_FILES
     ${PROTO_SRCS4} ${PROTO_HDRS4})
 
 set(TRANSPORTCATALOGUE_FILES main.cpp 
-    domain.h domain.cpp 
+    domain.h
     geo.h geo.cpp 
     json.h json.cpp 
     json_builder.h json_builder.cpp 

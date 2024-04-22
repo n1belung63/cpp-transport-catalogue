@@ -89,13 +89,8 @@ std::ostream& operator<<(std::ostream& out, Rgba rgba);
 
 std::ostream& operator<<(std::ostream& out, std::monostate mono);
 
-// using Color = std::string;
 using Color = std::variant<std::monostate, std::string, Rgb, Rgba>; 
 
-// Объявив в заголовочном файле константу со спецификатором inline,
-// мы сделаем так, что она будет одной на все единицы трансляции,
-// которые подключают этот заголовок.
-// В противном случае каждая единица трансляции будет использовать свою копию этой константы
 inline const Color NoneColor{"none"};
 
 enum class StrokeLineCap {
@@ -149,7 +144,6 @@ protected:
         if (fill_color_) {
             std::ostringstream strm;
             visit([&strm](auto value) { strm << value; }, *fill_color_);
-            // visit(ColorPrinter{strm}, *fill_color_);
             out << " fill=\"" << strm.str() << "\""sv;
         }
         if (stroke_color_) {
@@ -170,8 +164,6 @@ protected:
 
 private:
     Owner& AsOwner() {
-        // static_cast безопасно преобразует *this к Owner&,
-        // если класс Owner — наследник PathProps
         return static_cast<Owner&>(*this);
     }
 

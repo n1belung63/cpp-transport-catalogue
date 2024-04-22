@@ -65,7 +65,6 @@ namespace transport_catalogue {
     }
 
     StopInfo TransportCatalogue::GetStopInfo(std::string_view stopname) {
-        // TransportCatalogue::FindStopRef(stopname);
         if (stopname_to_stop_.count(stopname) < 1) {
             throw std::out_of_range("not found"s);
         }

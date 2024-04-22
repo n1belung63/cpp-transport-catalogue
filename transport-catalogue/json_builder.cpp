@@ -3,7 +3,6 @@
 namespace json {
 using namespace std::literals;
 
-// Builder
 Node Builder::Build() {
     if (nodes_stack_.size() > 1 || root_ == nullptr) {
         throw std::logic_error("Impossible to build"s);
@@ -109,7 +108,7 @@ BaseContext Builder::EndArray() {
     nodes_stack_.pop_back();
     return BaseContext(*this);
 }
-// End builder
+
 
 DictItemContext BaseContext::StartDict() {
     return builder_.StartDict();
